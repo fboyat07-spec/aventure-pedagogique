@@ -1,0 +1,960 @@
+openapi: 3.0.3
+info:
+  title: KidAI Learning API
+  version: 0.2.0
+  description: Full API specification for KidAI Learning App V2
+servers:
+  - url: https://api.kidai.local
+
+tags:
+  - name: Auth
+  - name: Users
+  - name: Children
+  - name: Diagnostics
+  - name: Skills
+  - name: Exercises
+  - name: Adaptive
+  - name: Spaced
+  - name: Tutor
+  - name: Emotion
+  - name: Quests
+  - name: Gamification
+  - name: Social
+  - name: Parents
+  - name: Analytics
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    NotFound:
+      description: Not Found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    RateLimited:
+      description: Too Many Requests
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    ValidationFailed:
+      description: Validation error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ValidationErrorResponse' }
+    ServerError:
+      description: Server error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        code: { type: string }
+        message: { type: string }
+        details: { type: object }
+
+    ErrorResponse:
+      type: object
+      properties:
+        error: { $ref: '#/components/schemas/Error' }
+        requestId: { type: string }
+        timestamp: { type: string, format: date-time }
+
+    ValidationError:
+      type: object
+      properties:
+        field: { type: string }
+        issue: { type: string }
+
+    ValidationErrorResponse:
+      type: object
+      properties:
+        error: { $ref: '#/components/schemas/Error' }
+        invalid: { type: array, items: { $ref: '#/components/schemas/ValidationError' } }
+        requestId: { type: string }
+        timestamp: { type: string, format: date-time }
+
+    Pagination:
+      type: object
+      properties:
+        page: { type: integer }
+        pageSize: { type: integer }
+        total: { type: integer }
+
+    User:
+      type: object
+      properties:
+        id: { type: string }
+        email: { type: string }
+        role: { type: string, enum: [parent, admin] }
+        locale: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    UserUpdateRequest:
+      type: object
+      properties:
+        locale: { type: string }
+
+    AuthSessionRequest:
+      type: object
+      required: [firebaseToken]
+      properties:
+        firebaseToken: { type: string }
+        deviceId: { type: string }
+
+    AuthSessionResponse:
+      type: object
+      properties:
+        token: { type: string }
+        expiresIn: { type: integer }
+        user: { $ref: '#/components/schemas/User' }
+
+    Child:
+      type: object
+      properties:
+        id: { type: string }
+        guardianId: { type: string }
+        name: { type: string }
+        age: { type: integer }
+        grade: { type: string }
+        preferences: { type: object }
+        avatar: { type: object }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    ChildCreateRequest:
+      type: object
+      required: [name, age]
+      properties:
+        name: { type: string }
+        age: { type: integer }
+        grade: { type: string }
+        preferences: { type: object }
+        avatar: { type: object }
+
+    ChildUpdateRequest:
+      type: object
+      properties:
+        name: { type: string }
+        age: { type: integer }
+        grade: { type: string }
+        preferences: { type: object }
+        avatar: { type: object }
+
+    Skill:
+      type: object
+      properties:
+        id: { type: string }
+        domain: { type: string }
+        level: { type: integer }
+        title: { type: string }
+        tags: { type: array, items: { type: string } }
+        prerequisites: { type: array, items: { type: string } }
+
+    DiagnosticQuestion:
+      type: object
+      properties:
+        id: { type: string }
+        skillId: { type: string }
+        prompt: { type: string }
+        choices: { type: array, items: { type: string } }
+        difficulty: { type: number }
+
+    DiagnosticSession:
+      type: object
+      properties:
+        id: { type: string }
+        childId: { type: string }
+        status: { type: string, enum: [active, completed] }
+        startedAt: { type: string, format: date-time }
+        completedAt: { type: string, format: date-time }
+        resultGraph: { type: object }
+
+    DiagnosticStartRequest:
+      type: object
+      required: [childId]
+      properties:
+        childId: { type: string }
+        domain: { type: string }
+
+    DiagnosticStartResponse:
+      type: object
+      properties:
+        session: { $ref: '#/components/schemas/DiagnosticSession' }
+        question: { $ref: '#/components/schemas/DiagnosticQuestion' }
+        remaining: { type: integer }
+
+    DiagnosticAnswerRequest:
+      type: object
+      required: [sessionId, questionId, answer]
+      properties:
+        sessionId: { type: string }
+        questionId: { type: string }
+        answer: { type: string }
+        timeMs: { type: integer }
+
+    DiagnosticAnswerResponse:
+      type: object
+      properties:
+        isCorrect: { type: boolean }
+        nextQuestion: { $ref: '#/components/schemas/DiagnosticQuestion' }
+        done: { type: boolean }
+        progress: { type: number }
+
+    DiagnosticFinishRequest:
+      type: object
+      required: [sessionId]
+      properties:
+        sessionId: { type: string }
+
+    DiagnosticFinishResponse:
+      type: object
+      properties:
+        session: { $ref: '#/components/schemas/DiagnosticSession' }
+        placement: { type: object }
+
+    Exercise:
+      type: object
+      properties:
+        id: { type: string }
+        skillId: { type: string }
+        difficulty: { type: number }
+        prompt: { type: string }
+        choices: { type: array, items: { type: string } }
+        answer: { type: string }
+        meta: { type: object }
+
+    ExerciseGenerateRequest:
+      type: object
+      required: [childId, skillId]
+      properties:
+        childId: { type: string }
+        skillId: { type: string }
+        difficulty: { type: number }
+        count: { type: integer, default: 1 }
+
+    ExerciseGenerateResponse:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Exercise' } }
+
+    ExerciseAttempt:
+      type: object
+      properties:
+        id: { type: string }
+        childId: { type: string }
+        exerciseId: { type: string }
+        answer: { type: string }
+        isCorrect: { type: boolean }
+        timeMs: { type: integer }
+
+    ExerciseSubmitRequest:
+      type: object
+      required: [childId, exerciseId, answer]
+      properties:
+        childId: { type: string }
+        exerciseId: { type: string }
+        answer: { type: string }
+        timeMs: { type: integer }
+
+    ExerciseSubmitResponse:
+      type: object
+      properties:
+        isCorrect: { type: boolean }
+        correctAnswer: { type: string }
+        explanation: { type: string }
+        xpAwarded: { type: integer }
+        nextDifficulty: { type: number }
+
+    AdaptiveAdjustRequest:
+      type: object
+      required: [childId, skillId]
+      properties:
+        childId: { type: string }
+        skillId: { type: string }
+        lastAttempts: { type: array, items: { $ref: '#/components/schemas/ExerciseAttempt' } }
+
+    AdaptiveAdjustResponse:
+      type: object
+      properties:
+        targetDifficulty: { type: number }
+        reason: { type: string }
+
+    SpacedReview:
+      type: object
+      properties:
+        id: { type: string }
+        childId: { type: string }
+        skillId: { type: string }
+        nextReviewAt: { type: string, format: date-time }
+        intervalDays: { type: number }
+
+    SpacedNextResponse:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/SpacedReview' } }
+
+    SpacedScheduleRequest:
+      type: object
+      required: [childId, skillId]
+      properties:
+        childId: { type: string }
+        skillId: { type: string }
+        result: { type: string, enum: [fail, hard, good, easy] }
+        reviewedAt: { type: string, format: date-time }
+
+    TutorChatRequest:
+      type: object
+      required: [childId, message]
+      properties:
+        childId: { type: string }
+        message: { type: string }
+        context: { type: object }
+
+    TutorChatResponse:
+      type: object
+      properties:
+        reply: { type: string }
+        hints: { type: array, items: { type: string } }
+        escalation: { type: boolean }
+
+    InterventionRequest:
+      type: object
+      required: [childId]
+      properties:
+        childId: { type: string }
+        context: { type: object }
+
+    InterventionResponse:
+      type: object
+      properties:
+        shouldNudge: { type: boolean }
+        nudgeType: { type: string }
+        message: { type: string }
+
+    EmotionDetectRequest:
+      type: object
+      required: [childId]
+      properties:
+        childId: { type: string }
+        signals: { type: object }
+
+    EmotionDetectResponse:
+      type: object
+      properties:
+        frustrationScore: { type: number }
+        engagementScore: { type: number }
+        recommendedAction: { type: string }
+
+    Quest:
+      type: object
+      properties:
+        id: { type: string }
+        skillId: { type: string }
+        narrative: { type: string }
+        steps: { type: array, items: { type: string } }
+        rewards: { type: object }
+
+    QuestProgressRequest:
+      type: object
+      required: [childId, questId]
+      properties:
+        childId: { type: string }
+        questId: { type: string }
+        step: { type: integer }
+        status: { type: string, enum: [active, completed] }
+
+    GamificationProfile:
+      type: object
+      properties:
+        childId: { type: string }
+        xp: { type: integer }
+        level: { type: integer }
+        streak: { type: integer }
+        badges: { type: array, items: { type: string } }
+
+    GamificationStatusResponse:
+      type: object
+      properties:
+        profile: { $ref: '#/components/schemas/GamificationProfile' }
+        recentRewards: { type: array, items: { type: string } }
+
+    RewardGrantRequest:
+      type: object
+      required: [childId, rewardId]
+      properties:
+        childId: { type: string }
+        rewardId: { type: string }
+        reason: { type: string }
+
+    AvatarEvolveRequest:
+      type: object
+      required: [childId, evolutionStage]
+      properties:
+        childId: { type: string }
+        evolutionStage: { type: string }
+
+    FriendRequest:
+      type: object
+      required: [childId, friendId]
+      properties:
+        childId: { type: string }
+        friendId: { type: string }
+
+    Challenge:
+      type: object
+      properties:
+        id: { type: string }
+        creatorId: { type: string }
+        participants: { type: array, items: { type: string } }
+        skillId: { type: string }
+        status: { type: string }
+        createdAt: { type: string, format: date-time }
+
+    ChallengeCreateRequest:
+      type: object
+      required: [creatorId, participants]
+      properties:
+        creatorId: { type: string }
+        participants: { type: array, items: { type: string } }
+        skillId: { type: string }
+        durationDays: { type: integer }
+
+    LeaderboardEntry:
+      type: object
+      properties:
+        childId: { type: string }
+        score: { type: integer }
+        rank: { type: integer }
+
+    LeaderboardsResponse:
+      type: object
+      properties:
+        scope: { type: string }
+        entries: { type: array, items: { $ref: '#/components/schemas/LeaderboardEntry' } }
+
+    ParentReport:
+      type: object
+      properties:
+        childId: { type: string }
+        weekStart: { type: string, format: date }
+        summary: { type: string }
+        recommendations: { type: array, items: { type: string } }
+
+    ParentRecommendationsResponse:
+      type: object
+      properties:
+        childId: { type: string }
+        items: { type: array, items: { type: string } }
+
+    AnalyticsEvent:
+      type: object
+      required: [type, createdAt]
+      properties:
+        childId: { type: string }
+        type: { type: string }
+        payload: { type: object }
+        createdAt: { type: string, format: date-time }
+        appVersion: { type: string }
+        device: { type: string }
+
+    AnalyticsIngestRequest:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/AnalyticsEvent' } }
+
+    SuccessResponse:
+      type: object
+      properties:
+        ok: { type: boolean }
+
+paths:
+  /v1/auth/session:
+    post:
+      tags: [Auth]
+      summary: Exchange Firebase token for app session
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AuthSessionRequest' }
+      responses:
+        '200':
+          description: Session created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthSessionResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /v1/users/me:
+    get:
+      tags: [Users]
+      summary: Get current user
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/User' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    patch:
+      tags: [Users]
+      summary: Update current user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UserUpdateRequest' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/User' } } } }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /v1/children:
+    get:
+      tags: [Children]
+      summary: List children
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Child' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    post:
+      tags: [Children]
+      summary: Create child profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChildCreateRequest' }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/Child' } } } }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/ValidationFailed' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /v1/children/{id}:
+    get:
+      tags: [Children]
+      summary: Get child
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Child' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    patch:
+      tags: [Children]
+      summary: Update child
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChildUpdateRequest' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Child' } } } }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /v1/diagnostics/start:
+    post:
+      tags: [Diagnostics]
+      summary: Start diagnostic test
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DiagnosticStartRequest' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/DiagnosticStartResponse' } } } }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /v1/diagnostics/answer:
+    post:
+      tags: [Diagnostics]
+      summary: Submit diagnostic answer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DiagnosticAnswerRequest' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/DiagnosticAnswerResponse' } } } }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /v1/diagnostics/finish:
+    post:
+      tags: [Diagnostics]
+      summary: Finish diagnostic and return placement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DiagnosticFinishRequest' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/DiagnosticFinishResponse' } } } }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /v1/skills:
+    get:
+      tags: [Skills]
+      summary: List skills
+      parameters:
+        - name: domain
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Skill' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /v1/skills/{id}:
+    get:
+      tags: [Skills]
+      summary: Get skill
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Skill' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /v1/exercises/generate:
+    post:
+      tags: [Exercises]
+      summary: Generate exercises
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExerciseGenerateRequest' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ExerciseGenerateResponse' } } } }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /v1/exercises/submit:
+    post:
+      tags: [Exercises]
+      summary: Submit exercise attempt
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExerciseSubmitRequest' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ExerciseSubmitResponse' } } } }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /v1/adaptive/adjust:
+    post:
+      tags: [Adaptive]
+      summary: Adjust difficulty based on performance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AdaptiveAdjustRequest' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/AdaptiveAdjustResponse' } } } }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /v1/spaced/next:
+    get:
+      tags: [Spaced]
+      summary: Get next spaced review items
+      parameters:
+        - name: childId
+          in: query
+          schema: { type: string }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/SpacedNextResponse' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /v1/spaced/schedule:
+    post:
+      tags: [Spaced]
+      summary: Schedule spaced review
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SpacedScheduleRequest' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/SpacedReview' } } } }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /v1/tutor/chat:
+    post:
+      tags: [Tutor]
+      summary: AI tutor chat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TutorChatRequest' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/TutorChatResponse' } } } }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /v1/tutor/intervention:
+    post:
+      tags: [Tutor]
+      summary: Intervention timing decision
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InterventionRequest' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/InterventionResponse' } } } }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /v1/emotion/detect:
+    post:
+      tags: [Emotion]
+      summary: Detect frustration or disengagement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EmotionDetectRequest' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/EmotionDetectResponse' } } } }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /v1/quests/active:
+    get:
+      tags: [Quests]
+      summary: Get active quests
+      parameters:
+        - name: childId
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Quest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /v1/quests/complete:
+    post:
+      tags: [Quests]
+      summary: Complete quest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/QuestProgressRequest' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/SuccessResponse' } } } }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /v1/gamification/status:
+    get:
+      tags: [Gamification]
+      summary: Get gamification status
+      parameters:
+        - name: childId
+          in: query
+          schema: { type: string }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/GamificationStatusResponse' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /v1/gamification/reward:
+    post:
+      tags: [Gamification]
+      summary: Grant reward
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RewardGrantRequest' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/SuccessResponse' } } } }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /v1/avatars/evolve:
+    post:
+      tags: [Gamification]
+      summary: Evolve avatar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AvatarEvolveRequest' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/SuccessResponse' } } } }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /v1/friends/request:
+    post:
+      tags: [Social]
+      summary: Send friend request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FriendRequest' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/SuccessResponse' } } } }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /v1/challenges:
+    post:
+      tags: [Social]
+      summary: Create challenge
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChallengeCreateRequest' }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/Challenge' } } } }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /v1/leaderboards:
+    get:
+      tags: [Social]
+      summary: Get leaderboards
+      parameters:
+        - name: scope
+          in: query
+          schema: { type: string }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/LeaderboardsResponse' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /v1/parents/summary:
+    get:
+      tags: [Parents]
+      summary: Weekly progress summary
+      parameters:
+        - name: childId
+          in: query
+          schema: { type: string }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ParentReport' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /v1/parents/recommendations:
+    get:
+      tags: [Parents]
+      summary: Parent recommendations
+      parameters:
+        - name: childId
+          in: query
+          schema: { type: string }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ParentRecommendationsResponse' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /v1/events:
+    post:
+      tags: [Analytics]
+      summary: Ingest analytics events
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AnalyticsIngestRequest' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/SuccessResponse' } } } }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }

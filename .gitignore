@@ -1,0 +1,13 @@
+node_modules
+.env
+.expo
+.expo-home
+.firebase
+.npm-global
+frontend/dist
+dist
+build
+*.log
+.DS_Store
+env.cloudrun.yaml
+*openAI*.rtf

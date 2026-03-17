@@ -1,0 +1,33 @@
+Build a full mobile educational application for children (6-14) with AI-driven personalization and ethical engagement.
+
+Constraints:
+- Avoid manipulative or addictive mechanics and gambling-like rewards.
+- Prioritize autonomy, mastery, and well-being.
+- Privacy by default and parental consent for child accounts.
+
+Core features:
+- onboarding with quick win + goal choice + consent flow
+- adaptive diagnostic quiz
+- knowledge graph learning model
+- learning gap detection
+- adaptive difficulty flow (challenge-skill balance)
+- spaced repetition system
+- AI tutor chat (OpenAI API) with safe, age-appropriate tone
+- intervention timing engine
+- emotion engagement detection from interaction signals only
+- infinite exercise generator
+- narrative learning quests and map
+- XP, badges, levels, streaks with forgiveness
+- evolving avatars
+- friend challenges and peer leaderboards (opt-in)
+- parent dashboard with weekly summaries & recommendations
+- voice tutor and homework OCR/photo scanner
+- smart notifications with quiet hours and opt-in
+- offline sync capability
+- analytics instrumentation + A/B testing hooks
+
+Tech stack:
+React Native frontend
+Node.js + Express backend
+Firebase (Auth, Firestore, Storage)
+OpenAI API integration

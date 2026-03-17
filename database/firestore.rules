@@ -1,0 +1,142 @@
+rules_version = "2";
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.role == "admin";
+    }
+
+    function isServer() {
+      return isSignedIn() && request.auth.token.server == true;
+    }
+
+    function isGuardian(childId) {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/children/$(childId)).data.guardianId == request.auth.uid;
+    }
+
+    // Users
+    match /users/{userId} {
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update, delete: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+    }
+
+    // Children
+    match /children/{childId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.guardianId == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.guardianId == request.auth.uid;
+      allow update, delete: if isAdmin() || (isSignedIn() && resource.data.guardianId == request.auth.uid);
+    }
+
+    // Skills and graph
+    match /skills/{skillId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || isServer();
+    }
+    match /skillEdges/{edgeId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || isServer();
+    }
+
+    // Diagnostics
+    match /diagnostics/{diagId} {
+      allow read: if isAdmin() || isGuardian(resource.data.childId);
+      allow create: if isAdmin() || isServer() || isGuardian(request.resource.data.childId);
+      allow update, delete: if isAdmin() || isServer();
+    }
+
+    // Exercises
+    match /exercises/{exerciseId} {
+      allow read: if isAdmin() || isServer();
+      allow write: if isAdmin() || isServer();
+    }
+
+    match /exerciseAttempts/{attemptId} {
+      allow read: if isAdmin() || isGuardian(resource.data.childId);
+      allow create: if isAdmin() || isServer() || isGuardian(request.resource.data.childId);
+      allow update, delete: if isAdmin() || isServer();
+    }
+
+    match /learningSessions/{sessionId} {
+      allow read: if isAdmin() || isGuardian(resource.data.childId);
+      allow create: if isAdmin() || isServer() || isGuardian(request.resource.data.childId);
+      allow update, delete: if isAdmin() || isServer();
+    }
+
+    match /spacedReviews/{reviewId} {
+      allow read: if isAdmin() || isGuardian(resource.data.childId);
+      allow create, update, delete: if isAdmin() || isServer();
+    }
+
+    // AI tutor conversations
+    match /aiConversations/{convId} {
+      allow read: if isAdmin() || isGuardian(resource.data.childId);
+      allow create, update, delete: if isAdmin() || isServer();
+    }
+
+    // Gamification
+    match /gamificationProfiles/{childId} {
+      allow read: if isAdmin() || isGuardian(childId);
+      allow create, update, delete: if isAdmin() || isServer();
+    }
+
+    match /quests/{questId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || isServer();
+    }
+
+    match /questProgress/{progressId} {
+      allow read: if isAdmin() || isGuardian(resource.data.childId);
+      allow create, update, delete: if isAdmin() || isServer();
+    }
+
+    match /avatarState/{avatarId} {
+      allow read: if isAdmin() || isGuardian(resource.data.childId);
+      allow create, update, delete: if isAdmin() || isServer();
+    }
+
+    // Social
+    match /friends/{friendId} {
+      allow read: if isAdmin() || isGuardian(resource.data.childId);
+      allow create, update, delete: if isAdmin() || isServer() || isGuardian(request.resource.data.childId);
+    }
+
+    match /challenges/{challengeId} {
+      allow read: if isAdmin() || isGuardian(resource.data.creatorId);
+      allow create: if isAdmin() || isServer() || isGuardian(request.resource.data.creatorId);
+      allow update, delete: if isAdmin() || isServer();
+    }
+
+    match /leaderboards/{leaderboardId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || isServer();
+    }
+
+    // Parents
+    match /parentReports/{reportId} {
+      allow read: if isAdmin() || isGuardian(resource.data.childId);
+      allow create, update, delete: if isAdmin() || isServer();
+    }
+
+    // Analytics
+    match /events/{eventId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if isAdmin() || isServer();
+    }
+
+    match /offlinePacks/{packId} {
+      allow read: if isAdmin() || isGuardian(resource.data.childId);
+      allow create, update, delete: if isAdmin() || isServer();
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
