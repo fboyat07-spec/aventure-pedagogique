@@ -1,14 +1,15 @@
 import express from "express";
 import { ok } from "../utils/respond.js";
 import { db, isFirebaseReady } from "../services/firebaseAdmin.js";
+import { knowledgeGraph, getSkill } from "../ai/knowledgeGraph.js";
 
 const router = express.Router();
 
-const sampleSkills = [
-  { id: "math.addition.1", domain: "math", level: 1, title: "Addition Basics", tags: ["addition"] },
-  { id: "math.subtraction.1", domain: "math", level: 1, title: "Subtraction Basics", tags: ["subtraction"] },
-  { id: "reading.phonics.1", domain: "reading", level: 1, title: "Phonics Start", tags: ["phonics"] }
-];
+const localSkills = Object.entries(knowledgeGraph).map(([id, value]) => ({
+  id,
+  ...value,
+  level: Number(id.split(".")[2] || 1)
+}));
 
 router.get("/", async (req, res) => {
   if (isFirebaseReady() && db) {
@@ -20,7 +21,7 @@ router.get("/", async (req, res) => {
       console.warn("Skills Firestore fallback:", err.message);
     }
   }
-  return ok(res, { items: sampleSkills });
+  return ok(res, { items: localSkills });
 });
 
 router.get("/:id", async (req, res) => {
@@ -33,7 +34,8 @@ router.get("/:id", async (req, res) => {
       console.warn("Skill Firestore fallback:", err.message);
     }
   }
-  const item = sampleSkills.find((s) => s.id === req.params.id) || null;
+  const raw = getSkill(req.params.id);
+  const item = raw ? { id: req.params.id, ...raw } : null;
   return ok(res, { skill: item });
 });
 
