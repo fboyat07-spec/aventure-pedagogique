@@ -15,7 +15,7 @@ router.post("/dev-token", (req, res) => {
     expiresIn: "7d"
   });
 
-  console.log("Token généré :", token);
+  console.log("Token g\u00e9n\u00e9r\u00e9 :", token);
 
   res.json({ token });
 });
