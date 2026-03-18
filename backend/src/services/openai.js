@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 
 const apiKey = process.env.OPENAI_API_KEY || "";
-const model = process.env.OPENAI_MODEL || "gpt-5";
+const configuredModel = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
 const client = apiKey ? new OpenAI({ apiKey }) : null;
 
@@ -9,7 +9,21 @@ export function isOpenAIReady() {
   return Boolean(client);
 }
 
-const fallbackTutor = { reply: "", hints: [], escalation: false };
+function tutorFallbackReply(message = "") {
+  const hasQuestion = Boolean(message && message.trim());
+  if (!hasQuestion) {
+    return "Bonjour ! Pose-moi une question de maths, lecture ou sciences, et je t'aide pas a pas.";
+  }
+  return "Bonne question ! On va proceder etape par etape: 1) reformule le probleme, 2) fais une tentative, 3) je t'aide a corriger.";
+}
+
+const fallbackTutor = {
+  reply: tutorFallbackReply(""),
+  hints: [],
+  escalation: false,
+  source: "fallback",
+  model: null
+};
 
 const fallbackExercise = (skillId, difficulty) => ({
   id: "",
@@ -21,38 +35,136 @@ const fallbackExercise = (skillId, difficulty) => ({
   meta: { source: "fallback" }
 });
 
-export async function generateTutorReply({ message }) {
-  if (!client) return fallbackTutor;
+function modelCandidates() {
+  const candidates = [configuredModel, "gpt-4o-mini", "gpt-4.1-mini"];
+  return [...new Set(candidates.filter(Boolean))];
+}
+
+function extractTextFromResponse(response) {
+  if (!response) return "";
+
+  if (typeof response.output_text === "string" && response.output_text.trim()) {
+    return response.output_text.trim();
+  }
+
+  if (!Array.isArray(response.output)) return "";
+
+  const chunks = [];
+  for (const item of response.output) {
+    if (!Array.isArray(item.content)) continue;
+    for (const content of item.content) {
+      if (typeof content?.text === "string" && content.text.trim()) {
+        chunks.push(content.text.trim());
+      }
+    }
+  }
+
+  return chunks.join("\n").trim();
+}
+
+function extractJsonObject(text = "") {
+  const raw = String(text || "").trim();
+  if (!raw) return null;
+
+  const withoutFence = raw
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/```$/i, "")
+    .trim();
 
   try {
-    const response = await client.responses.create({
-      model,
+    return JSON.parse(withoutFence);
+  } catch (err) {
+    // Continue below with best-effort object extraction.
+  }
+
+  const first = withoutFence.indexOf("{");
+  const last = withoutFence.lastIndexOf("}");
+  if (first === -1 || last === -1 || first >= last) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(withoutFence.slice(first, last + 1));
+  } catch (err) {
+    return null;
+  }
+}
+
+async function callOpenAIWithFallback(buildRequest) {
+  if (!client) {
+    throw new Error("openai_not_configured");
+  }
+
+  let lastError = null;
+
+  for (const model of modelCandidates()) {
+    try {
+      const response = await client.responses.create(buildRequest(model));
+      return { response, model };
+    } catch (err) {
+      lastError = err;
+      const message = err?.message || "unknown_error";
+      console.warn(`OpenAI call failed for model ${model}: ${message}`);
+    }
+  }
+
+  throw lastError || new Error("openai_call_failed");
+}
+
+export async function generateTutorReply({ message }) {
+  const userMessage = String(message || "").trim();
+  if (!userMessage) {
+    return {
+      ...fallbackTutor,
+      reply: tutorFallbackReply("")
+    };
+  }
+
+  if (!client) {
+    return {
+      ...fallbackTutor,
+      reply: tutorFallbackReply(userMessage)
+    };
+  }
+
+  try {
+    const { response, model } = await callOpenAIWithFallback((candidateModel) => ({
+      model: candidateModel,
       input: [
         {
           role: "system",
           content:
-            "You are a friendly AI tutor for children ages 6-14. Be concise, encouraging, and safe. Avoid sensitive topics."
+            "You are a friendly AI tutor for children ages 6-14. Reply in simple French, concise, encouraging, and safe."
         },
         {
           role: "user",
-          content: message
+          content: userMessage
         }
       ],
-      max_output_tokens: 200
-    });
+      max_output_tokens: 220
+    }));
 
-    const reply = response.output_text || "";
-    return { reply, hints: [], escalation: false };
-  } catch (err) {
-    return fallbackTutor;
-  }
-}
+    const reply = extractTextFromResponse(response);
+    if (!reply) {
+      return {
+        ...fallbackTutor,
+        reply: tutorFallbackReply(userMessage)
+      };
+    }
 
-function safeJsonParse(text) {
-  try {
-    return JSON.parse(text);
+    return {
+      reply,
+      hints: [],
+      escalation: false,
+      source: "openai",
+      model
+    };
   } catch (err) {
-    return null;
+    return {
+      ...fallbackTutor,
+      reply: tutorFallbackReply(userMessage)
+    };
   }
 }
 
@@ -62,24 +174,28 @@ export async function generateExercise({ skillId, difficulty }) {
   }
 
   try {
-    const response = await client.responses.create({
-      model,
+    const { response, model } = await callOpenAIWithFallback((candidateModel) => ({
+      model: candidateModel,
       input: [
         {
           role: "system",
           content:
-            "You create short, age-appropriate exercises. Return ONLY JSON with keys: prompt, choices, answer."
+            "Create one short exercise for children. Return ONLY JSON: {\"prompt\":\"...\",\"choices\":[\"...\"],\"answer\":\"...\"}."
         },
         {
           role: "user",
-          content: `Skill: ${skillId}. Difficulty: ${difficulty || 1}. Make one multiple-choice exercise.`
+          content: `Skill: ${skillId}. Difficulty: ${difficulty || 1}.`
         }
       ],
-      max_output_tokens: 200
-    });
+      max_output_tokens: 220
+    }));
 
-    const json = safeJsonParse(response.output_text || "");
-    if (!json || !json.prompt || !Array.isArray(json.choices)) {
+    const json = extractJsonObject(extractTextFromResponse(response));
+    const choices = Array.isArray(json?.choices)
+      ? json.choices.filter((choice) => typeof choice === "string").slice(0, 6)
+      : [];
+
+    if (!json || typeof json.prompt !== "string" || choices.length < 2 || !json.answer) {
       return fallbackExercise(skillId, difficulty);
     }
 
@@ -88,9 +204,9 @@ export async function generateExercise({ skillId, difficulty }) {
       skillId,
       difficulty,
       prompt: json.prompt,
-      choices: json.choices,
-      answer: json.answer || "",
-      meta: { source: "openai" }
+      choices,
+      answer: String(json.answer),
+      meta: { source: "openai", model }
     };
   } catch (err) {
     return fallbackExercise(skillId, difficulty);
