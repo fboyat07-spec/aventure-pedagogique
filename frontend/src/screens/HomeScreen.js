@@ -11,7 +11,7 @@ import { useApp } from "../state/AppContext";
 import { theme } from "../theme";
 
 export default function HomeScreen({ navigation }) {
-  const { token } = useApp();
+  const { token, child, user } = useApp();
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -42,6 +42,14 @@ export default function HomeScreen({ navigation }) {
   return (
     <ScreenLayout title="Home" subtitle="Daily mission and quick stats.">
       <InlineMessage type="error" text={error} />
+      {child ? (
+        <Card>
+          <Text style={styles.sectionTitle}>Welcome back, {child.name}</Text>
+          <Text style={styles.muted}>
+            Goal: {user?.weeklyGoal ? user.weeklyGoal.replace(/_/g, " ") : "not set yet"}
+          </Text>
+        </Card>
+      ) : null}
 
       <Card>
         <Text style={styles.sectionTitle}>Daily mission</Text>

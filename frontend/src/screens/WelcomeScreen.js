@@ -10,7 +10,7 @@ import { getFirebaseIdToken, hasFirebaseConfig } from "../services/firebase";
 export default function WelcomeScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const { setToken } = useApp();
+  const { setToken, setUser } = useApp();
 
   const handleStart = async () => {
     setLoading(true);
@@ -27,6 +27,7 @@ export default function WelcomeScreen({ navigation }) {
         body: JSON.stringify({ firebaseToken })
       });
       setToken(res.token || null);
+      setUser(res.user || null);
       navigation.navigate("ParentConsent");
     } catch (err) {
       setError("Unable to start session. Please try again.");
