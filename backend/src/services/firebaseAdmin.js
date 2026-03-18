@@ -23,6 +23,7 @@ if (!admin.apps.length) {
 
 export const isFirebaseReady = () => firebaseReady;
 export const db = firebaseReady ? admin.firestore() : null;
+export const messaging = firebaseReady ? admin.messaging() : null;
 
 export async function verifyIdToken(idToken) {
   if (!firebaseReady) return null;

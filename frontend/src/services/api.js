@@ -102,6 +102,33 @@ export function updateNotificationPreferences({ token, updates }) {
   });
 }
 
+export function registerPushDevice({ token, deviceToken, platform = "web" }) {
+  return apiRequest("/notifications/devices/register", {
+    method: "POST",
+    token,
+    body: JSON.stringify({ token: deviceToken, platform })
+  });
+}
+
+export function listPushDevices({ token }) {
+  return apiRequest("/notifications/devices", { token });
+}
+
+export function sendTestPush({ token }) {
+  return apiRequest("/notifications/send-test", {
+    method: "POST",
+    token
+  });
+}
+
+export function sendSmartNudgePush({ token, childName }) {
+  return apiRequest("/notifications/send-nudge", {
+    method: "POST",
+    token,
+    body: JSON.stringify({ childName })
+  });
+}
+
 export function scanHomework({ token, imageUrl, instruction }) {
   return apiRequest("/homework/scan", {
     method: "POST",

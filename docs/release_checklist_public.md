@@ -26,6 +26,7 @@
 - `exercise_submitted` and `lesson_completed` events received.
 - `quest_completed` and `diagnostic_completed` events received.
 - Drop-risk logic updates after 24h/48h inactivity windows.
+- Push events tracked: `notification_sent` and `notification_opened`.
 
 ## 5) Deployment
 - Frontend exported (`expo export -p web`) and deployed to Firebase Hosting.
