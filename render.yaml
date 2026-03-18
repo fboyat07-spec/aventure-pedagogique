@@ -1,9 +1,10 @@
 services:
   - type: web
     name: kidai-backend
-    env: docker
+    env: node
     rootDir: backend
-    dockerfilePath: Dockerfile
+    buildCommand: npm install
+    startCommand: node src/server.js
     plan: free
     autoDeploy: true
     envVars:
