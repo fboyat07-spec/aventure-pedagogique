@@ -4,7 +4,7 @@ import { recordEvent, summarizeEvents } from "../services/analyticsStore.js";
 
 const router = express.Router();
 
-router.post("/", (req, res) => {
+router.post("/", async (req, res) => {
   const { type, childId, metadata } = req.body || {};
   if (!type || typeof type !== "string") {
     return res.status(400).json({
@@ -14,18 +14,18 @@ router.post("/", (req, res) => {
     });
   }
 
-  const item = recordEvent(req.user.id, { type, childId, metadata });
+  const item = await recordEvent(req.user.id, { type, childId, metadata });
   ok(res, { event: item });
 });
 
-router.get("/summary", (req, res) => {
+router.get("/summary", async (req, res) => {
   const days = Number(req.query.days || 7);
-  const summary = summarizeEvents(req.user.id, days);
+  const summary = await summarizeEvents(req.user.id, days);
   ok(res, { summary });
 });
 
-router.get("/drop-signals", (req, res) => {
-  const summary = summarizeEvents(req.user.id, Number(req.query.days || 7));
+router.get("/drop-signals", async (req, res) => {
+  const summary = await summarizeEvents(req.user.id, Number(req.query.days || 7));
   ok(res, {
     dropRisk: summary.dropRisk,
     hoursSinceLastEvent: summary.hoursSinceLastEvent,

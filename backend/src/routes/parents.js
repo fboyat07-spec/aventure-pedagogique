@@ -42,9 +42,9 @@ function domainAverage(mastery, domain) {
   return Math.round(avg * 100);
 }
 
-router.get("/summary", (req, res) => {
+router.get("/summary", async (req, res) => {
   const mastery = masteryFromRequest(req);
-  const analytics = summarizeEvents(req.user.id, Number(req.query.days || 7));
+  const analytics = await summarizeEvents(req.user.id, Number(req.query.days || 7));
   const weakSkills = Object.entries(mastery)
     .sort((a, b) => Number(a[1]) - Number(b[1]))
     .slice(0, 3)

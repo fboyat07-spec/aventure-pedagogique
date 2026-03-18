@@ -20,9 +20,9 @@ export function buildSmartNudge({ summary, weeklyGoal = "", childName = "" } = {
     return {
       type: "support_hint",
       priority: "medium",
-      title: "Révision guidée",
-      message: `${namePrefix}on révise les erreurs d'hier pour progresser plus vite.`,
-      action: { label: "Mode révision", route: "Progress" }
+      title: "Revision guidee",
+      message: `${namePrefix}on revise les erreurs d'hier pour progresser plus vite.`,
+      action: { label: "Mode revision", route: "Progress" }
     };
   }
 
@@ -30,9 +30,9 @@ export function buildSmartNudge({ summary, weeklyGoal = "", childName = "" } = {
     return {
       type: "streak_reward",
       priority: "medium",
-      title: "Bonus de série",
-      message: `${namePrefix}super série ${streak} jours, un bonus XP t'attend.`,
-      action: { label: "Réclamer bonus", route: "Rewards" }
+      title: "Bonus de serie",
+      message: `${namePrefix}super serie ${streak} jours, un bonus XP t'attend.`,
+      action: { label: "Reclamer bonus", route: "Rewards" }
     };
   }
 
@@ -41,7 +41,7 @@ export function buildSmartNudge({ summary, weeklyGoal = "", childName = "" } = {
       type: "quick_win",
       priority: "medium",
       title: "Premier objectif du jour",
-      message: `${namePrefix}fais une mission rapide maintenant pour débloquer ton XP.`,
+      message: `${namePrefix}fais une mission rapide maintenant pour debloquer ton XP.`,
       action: { label: "Commencer", route: "Missions" }
     };
   }
@@ -52,7 +52,7 @@ export function buildSmartNudge({ summary, weeklyGoal = "", childName = "" } = {
     title: "Progression stable",
     message: reminderGoal
       ? `${namePrefix}objectif actif: ${reminderGoal}. Encore une mission aujourd'hui.`
-      : `${namePrefix}continue comme ça avec une mission quotidienne.`,
+      : `${namePrefix}continue comme ca avec une mission quotidienne.`,
     action: { label: "Voir progression", route: "Progress" }
   };
 }

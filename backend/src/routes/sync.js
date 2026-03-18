@@ -4,10 +4,10 @@ import { ingestEvents, summarizeEvents } from "../services/analyticsStore.js";
 
 const router = express.Router();
 
-router.post("/upload", (req, res) => {
+router.post("/upload", async (req, res) => {
   const { events = [], progress = [], exercises = [] } = req.body || {};
 
-  const acceptedEvents = ingestEvents(
+  const acceptedEvents = await ingestEvents(
     req.user.id,
     Array.isArray(events) ? events.slice(0, 500) : []
   );
@@ -18,7 +18,7 @@ router.post("/upload", (req, res) => {
       progress: Array.isArray(progress) ? progress.length : 0,
       exercises: Array.isArray(exercises) ? exercises.length : 0
     },
-    summary: summarizeEvents(req.user.id, 7)
+    summary: await summarizeEvents(req.user.id, 7)
   });
 });
 

@@ -3,7 +3,7 @@ import OpenAI from "openai";
 const apiKey = process.env.OPENAI_API_KEY || "";
 const configuredModel = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
-const client = apiKey ? new OpenAI({ apiKey }) : null;
+const client = apiKey ? new OpenAI({ apiKey, timeout: 15000 }) : null;
 
 export function isOpenAIReady() {
   return Boolean(client);

@@ -6,9 +6,9 @@ const privateKey = process.env.FIREBASE_PRIVATE_KEY
   ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n")
   : undefined;
 
-let firebaseReady = false;
+let firebaseReady = admin.apps.length > 0;
 
-if (!admin.apps.length) {
+if (!firebaseReady) {
   if (projectId && clientEmail && privateKey) {
     admin.initializeApp({
       credential: admin.credential.cert({

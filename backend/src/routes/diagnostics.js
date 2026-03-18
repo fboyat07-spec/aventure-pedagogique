@@ -6,6 +6,7 @@ import {
   diagnosticPlacement,
   evaluateDiagnosticAnswer
 } from "../ai/diagnosticEngine.js";
+import { db, isFirebaseReady } from "../services/firebaseAdmin.js";
 
 const router = express.Router();
 const sessions = new Map();
@@ -36,7 +37,51 @@ function recommendedSkill(domain, placement) {
   return matrix[domain]?.[placement] || "math.addition.1";
 }
 
-router.post("/start", (req, res) => {
+function sessionCollection() {
+  return db.collection("diagnosticSessions");
+}
+
+async function saveSession(session) {
+  if (isFirebaseReady() && db) {
+    try {
+      await sessionCollection().doc(session.id).set(session, { merge: true });
+      return;
+    } catch (err) {
+      console.warn("Diagnostic session firestore fallback:", err.message);
+    }
+  }
+
+  sessions.set(session.id, session);
+}
+
+async function readSession(sessionId) {
+  if (isFirebaseReady() && db) {
+    try {
+      const snap = await sessionCollection().doc(sessionId).get();
+      if (!snap.exists) return null;
+      return { id: snap.id, ...snap.data() };
+    } catch (err) {
+      console.warn("Diagnostic session read fallback:", err.message);
+    }
+  }
+
+  return sessions.get(sessionId) || null;
+}
+
+async function deleteSession(sessionId) {
+  if (isFirebaseReady() && db) {
+    try {
+      await sessionCollection().doc(sessionId).delete();
+      return;
+    } catch (err) {
+      console.warn("Diagnostic session delete fallback:", err.message);
+    }
+  }
+
+  sessions.delete(sessionId);
+}
+
+router.post("/start", async (req, res) => {
   const domain = ["math", "reading"].includes(req.body?.domain) ? req.body.domain : "math";
   const level = Number.isInteger(req.body?.level) ? req.body.level : 1;
 
@@ -49,8 +94,9 @@ router.post("/start", (req, res) => {
     });
   }
 
+  const now = new Date().toISOString();
   const sessionId = crypto.randomUUID();
-  sessions.set(sessionId, {
+  const session = {
     id: sessionId,
     userId: req.user.id,
     domain,
@@ -59,17 +105,20 @@ router.post("/start", (req, res) => {
     correct: 0,
     askedIds: [question.id],
     currentQuestion: question,
-    startedAt: new Date().toISOString()
-  });
+    startedAt: now,
+    updatedAt: now
+  };
+
+  await saveSession(session);
 
   ok(res, {
-    session: { id: sessionId, domain, startedAt: new Date().toISOString() },
+    session: { id: sessionId, domain, startedAt: now },
     question: publicQuestion(question),
     remaining: MAX_QUESTIONS
   });
 });
 
-router.post("/answer", (req, res) => {
+router.post("/answer", async (req, res) => {
   const { sessionId, answer } = req.body || {};
 
   if (!sessionId || typeof answer !== "string") {
@@ -80,7 +129,7 @@ router.post("/answer", (req, res) => {
     });
   }
 
-  const session = sessions.get(sessionId);
+  const session = await readSession(sessionId);
   if (!session || session.userId !== req.user.id) {
     return res.status(404).json({
       error: { code: "not_found", message: "Diagnostic session not found." },
@@ -118,6 +167,8 @@ router.post("/answer", (req, res) => {
   }
 
   const progress = Math.round((session.total / MAX_QUESTIONS) * 100);
+  session.updatedAt = new Date().toISOString();
+  await saveSession(session);
 
   ok(res, {
     isCorrect,
@@ -128,9 +179,9 @@ router.post("/answer", (req, res) => {
   });
 });
 
-router.post("/finish", (req, res) => {
+router.post("/finish", async (req, res) => {
   const { sessionId } = req.body || {};
-  const session = sessions.get(sessionId);
+  const session = await readSession(sessionId);
 
   if (!session || session.userId !== req.user.id) {
     return res.status(404).json({
@@ -143,7 +194,7 @@ router.post("/finish", (req, res) => {
   const placement = diagnosticPlacement({ total: session.total, correct: session.correct });
   const skillId = recommendedSkill(session.domain, placement);
 
-  sessions.delete(sessionId);
+  await deleteSession(sessionId);
 
   ok(res, {
     session: {

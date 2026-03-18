@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { ok } from "../utils/respond.js";
 import { generateExercise } from "../services/openai.js";
 import { createRateLimiter } from "../middleware/security.js";
+import { db, isFirebaseReady } from "../services/firebaseAdmin.js";
 
 const router = express.Router();
 router.use(createRateLimiter({ windowMs: 60 * 1000, max: 80 }));
@@ -16,25 +17,74 @@ function normalizeAnswer(value) {
     .replace(/\s+/g, " ");
 }
 
-function cleanupExpiredExercises() {
+function memoryCleanupExpiredExercises() {
   const now = Date.now();
   for (const [id, item] of pendingExercises.entries()) {
-    if (now - item.createdAt > EXERCISE_TTL_MS) {
+    if (now >= item.expiresAtMs) {
       pendingExercises.delete(id);
     }
   }
 }
 
+function pendingCollection() {
+  return db.collection("pendingExercises");
+}
+
+async function savePendingExercise(item) {
+  if (isFirebaseReady() && db) {
+    try {
+      await pendingCollection().doc(item.id).set(item, { merge: true });
+      return;
+    } catch (err) {
+      console.warn("Pending exercise firestore fallback:", err.message);
+    }
+  }
+
+  pendingExercises.set(item.id, item);
+}
+
+async function readPendingExercise(exerciseId) {
+  if (isFirebaseReady() && db) {
+    try {
+      const snap = await pendingCollection().doc(exerciseId).get();
+      if (!snap.exists) return null;
+      return { id: snap.id, ...snap.data() };
+    } catch (err) {
+      console.warn("Pending exercise read fallback:", err.message);
+    }
+  }
+
+  memoryCleanupExpiredExercises();
+  return pendingExercises.get(exerciseId) || null;
+}
+
+async function deletePendingExercise(exerciseId) {
+  if (isFirebaseReady() && db) {
+    try {
+      await pendingCollection().doc(exerciseId).delete();
+      return;
+    } catch (err) {
+      console.warn("Pending exercise delete fallback:", err.message);
+    }
+  }
+
+  pendingExercises.delete(exerciseId);
+}
+
 router.post("/generate", async (req, res) => {
-  cleanupExpiredExercises();
+  memoryCleanupExpiredExercises();
 
   const { skillId, difficulty } = req.body || {};
   const generated = await generateExercise({ skillId: skillId || "math.addition.1", difficulty });
   const exerciseId = generated.id || crypto.randomUUID();
+  const now = Date.now();
 
-  pendingExercises.set(exerciseId, {
+  await savePendingExercise({
+    id: exerciseId,
+    userId: req.user.id,
     answer: normalizeAnswer(generated.answer),
-    createdAt: Date.now()
+    createdAtMs: now,
+    expiresAtMs: now + EXERCISE_TTL_MS
   });
 
   ok(res, {
@@ -51,8 +101,8 @@ router.post("/generate", async (req, res) => {
   });
 });
 
-router.post("/submit", (req, res) => {
-  cleanupExpiredExercises();
+router.post("/submit", async (req, res) => {
+  memoryCleanupExpiredExercises();
 
   const { exerciseId, answer } = req.body || {};
   if (!exerciseId) {
@@ -71,8 +121,17 @@ router.post("/submit", (req, res) => {
     });
   }
 
-  const exercise = pendingExercises.get(exerciseId);
-  if (!exercise) {
+  const exercise = await readPendingExercise(exerciseId);
+  if (!exercise || exercise.userId !== req.user.id) {
+    return res.status(404).json({
+      error: { code: "not_found", message: "Exercise expired or not found. Generate a new one." },
+      requestId: req.id,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  if (Date.now() >= Number(exercise.expiresAtMs || 0)) {
+    await deletePendingExercise(exerciseId);
     return res.status(404).json({
       error: { code: "not_found", message: "Exercise expired or not found. Generate a new one." },
       requestId: req.id,
@@ -82,7 +141,7 @@ router.post("/submit", (req, res) => {
 
   const isCorrect = normalizeAnswer(answer) === exercise.answer;
   if (isCorrect) {
-    pendingExercises.delete(exerciseId);
+    await deletePendingExercise(exerciseId);
   }
 
   return ok(res, {

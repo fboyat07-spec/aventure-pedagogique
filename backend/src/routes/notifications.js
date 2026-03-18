@@ -42,13 +42,13 @@ async function sendToAllDevices(userId, payload) {
   };
 }
 
-router.get("/preferences", (req, res) => {
-  const preferences = getNotificationPrefs(req.user.id);
+router.get("/preferences", async (req, res) => {
+  const preferences = await getNotificationPrefs(req.user.id);
   ok(res, { preferences, pushReady: isPushReady() });
 });
 
-router.patch("/preferences", (req, res) => {
-  const preferences = updateNotificationPrefs(req.user.id, req.body || {});
+router.patch("/preferences", async (req, res) => {
+  const preferences = await updateNotificationPrefs(req.user.id, req.body || {});
   ok(res, { preferences, pushReady: isPushReady() });
 });
 
@@ -79,19 +79,22 @@ router.post("/send-test", async (req, res) => {
   });
 
   if (report.success > 0) {
-    recordEvent(req.user.id, { type: "notification_sent", metadata: { category: "test", count: report.success } });
+    await recordEvent(req.user.id, {
+      type: "notification_sent",
+      metadata: { category: "test", count: report.success }
+    });
   }
 
   ok(res, { report, pushReady: isPushReady() });
 });
 
 router.get("/next-nudge", async (req, res) => {
-  const preferences = getNotificationPrefs(req.user.id);
+  const preferences = await getNotificationPrefs(req.user.id);
   if (!preferences.enabled) {
     return ok(res, { nudge: null, preferences });
   }
 
-  const summary = summarizeEvents(req.user.id, Number(req.query.days || 7));
+  const summary = await summarizeEvents(req.user.id, Number(req.query.days || 7));
   const user = await getUserProfile(req.user.id);
   const nudge = buildSmartNudge({
     summary,
@@ -103,12 +106,12 @@ router.get("/next-nudge", async (req, res) => {
 });
 
 router.post("/send-nudge", async (req, res) => {
-  const preferences = getNotificationPrefs(req.user.id);
+  const preferences = await getNotificationPrefs(req.user.id);
   if (!preferences.enabled) {
     return ok(res, { sent: false, reason: "notifications_disabled" });
   }
 
-  const summary = summarizeEvents(req.user.id, Number(req.query.days || 7));
+  const summary = await summarizeEvents(req.user.id, Number(req.query.days || 7));
   const user = await getUserProfile(req.user.id);
   const nudge = buildSmartNudge({
     summary,
@@ -127,7 +130,7 @@ router.post("/send-nudge", async (req, res) => {
   });
 
   if (report.success > 0) {
-    recordEvent(req.user.id, {
+    await recordEvent(req.user.id, {
       type: "notification_sent",
       metadata: { category: "smart_nudge", count: report.success, nudgeType: nudge.type }
     });
@@ -136,9 +139,9 @@ router.post("/send-nudge", async (req, res) => {
   ok(res, { nudge, report, pushReady: isPushReady() });
 });
 
-router.post("/opened", (req, res) => {
+router.post("/opened", async (req, res) => {
   const { type = "unknown", route = "Home" } = req.body || {};
-  recordEvent(req.user.id, {
+  await recordEvent(req.user.id, {
     type: "notification_opened",
     metadata: { type, route }
   });

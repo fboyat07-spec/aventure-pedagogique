@@ -24,6 +24,7 @@ import ops from "./ops.js";
 import { requireAuth } from "../middleware/auth.js";
 
 const router = express.Router();
+const enableIncompleteModules = process.env.ENABLE_INCOMPLETE_MODULES === "true";
 
 router.use("/auth", auth);
 
@@ -39,15 +40,18 @@ router.use("/tutor", tutor);
 router.use("/emotion", emotion);
 router.use("/quests", quests);
 router.use("/gamification", gamification);
-router.use("/avatars", avatars);
-router.use("/friends", friends);
-router.use("/challenges", challenges);
-router.use("/leaderboards", leaderboards);
 router.use("/parents", parents);
 router.use("/events", analytics);
 router.use("/notifications", notifications);
 router.use("/sync", sync);
 router.use("/homework", homework);
 router.use("/ops", ops);
+
+if (enableIncompleteModules) {
+  router.use("/avatars", avatars);
+  router.use("/friends", friends);
+  router.use("/challenges", challenges);
+  router.use("/leaderboards", leaderboards);
+}
 
 export default router;

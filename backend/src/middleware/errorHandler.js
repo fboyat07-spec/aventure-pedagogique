@@ -9,16 +9,30 @@ export function notFound(req, res, next) {
 }
 
 export function errorHandler(err, req, res, next) {
-  console.error(err);
+  let status = 500;
+  let message = "Unexpected error";
+
+  if (err?.type === "entity.parse.failed") {
+    status = 400;
+    message = "Invalid JSON body";
+  } else if (err?.message === "cors_not_allowed") {
+    status = 403;
+    message = "CORS origin not allowed";
+  }
+
+  if (status >= 500) {
+    console.error(err);
+  }
+
   trackError({
     requestId: req.id,
     path: req.originalUrl,
     method: req.method,
-    message: err?.message || "Unexpected error",
+    message: err?.message || message,
     stack: err?.stack
   });
-  res.status(500).json({
-    error: { code: "server_error", message: "Unexpected error" },
+  res.status(status).json({
+    error: { code: status >= 500 ? "server_error" : "request_failed", message },
     requestId: req.id,
     timestamp: new Date().toISOString()
   });
