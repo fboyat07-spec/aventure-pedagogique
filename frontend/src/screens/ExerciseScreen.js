@@ -11,8 +11,10 @@ import { useApp } from "../state/AppContext";
 export default function ExerciseScreen() {
   const [answer, setAnswer] = useState("");
   const [feedback, setFeedback] = useState("");
+  const [feedbackType, setFeedbackType] = useState("info");
   const [exercise, setExercise] = useState(null);
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const { token } = useApp();
 
   useEffect(() => {
@@ -26,6 +28,9 @@ export default function ExerciseScreen() {
         if (!mounted) return;
         const item = Array.isArray(res.items) ? res.items[0] : null;
         setExercise(item || null);
+        setAnswer("");
+        setFeedback("");
+        setFeedbackType("info");
       })
       .catch(() => {
         if (!mounted) return;
@@ -36,8 +41,39 @@ export default function ExerciseScreen() {
     };
   }, [token]);
 
-  const handleSubmit = () => {
-    setFeedback("Good try. Check your answer and try again.");
+  const handleSubmit = async () => {
+    if (!exercise?.id) return;
+    if (!answer.trim()) {
+      setFeedbackType("error");
+      setFeedback("Please enter an answer first.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const result = await apiRequest("/exercises/submit", {
+        method: "POST",
+        token,
+        body: JSON.stringify({ exerciseId: exercise.id, answer })
+      });
+
+      if (result.isCorrect) {
+        setFeedbackType("info");
+        setFeedback("Great job! Correct answer.");
+      } else {
+        setFeedbackType("error");
+        setFeedback(
+          result.correctAnswer
+            ? `Good try. Correct answer: ${result.correctAnswer}`
+            : "Good try. Check your answer and try again."
+        );
+      }
+    } catch (err) {
+      setFeedbackType("error");
+      setFeedback("Unable to submit answer right now.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -52,8 +88,12 @@ export default function ExerciseScreen() {
           style={styles.input}
           keyboardType="number-pad"
         />
-        <PrimaryButton label="Submit" onPress={handleSubmit} />
-        <InlineMessage text={feedback} />
+        <PrimaryButton
+          label={submitting ? "Submitting..." : "Submit"}
+          onPress={handleSubmit}
+          disabled={submitting}
+        />
+        <InlineMessage type={feedbackType} text={feedback} />
       </Card>
     </ScreenLayout>
   );
