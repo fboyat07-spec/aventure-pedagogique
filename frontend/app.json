@@ -23,6 +23,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0B1B2A"
       }
-    }
+    },
+    "plugins": ["expo-notifications"]
   }
 }

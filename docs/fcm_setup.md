@@ -11,7 +11,7 @@
 
 ## 3) Registering a device token
 - Open app settings screen.
-- Paste a valid FCM token in **FCM Push Devices**.
+- Use **Auto Detect Token (Device)** on a real Android/iOS build, or paste a valid FCM token manually.
 - Click **Register Device Token**.
 
 ## 4) Push tests
@@ -22,3 +22,4 @@
 - Tokens can expire or be revoked.
 - Backend auto-removes invalid tokens when Firebase returns `registration-token-not-registered`.
 - Track opens with `POST /v1/notifications/opened`.
+- Auto token detection is not available in web build.

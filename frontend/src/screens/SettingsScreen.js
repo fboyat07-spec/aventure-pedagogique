@@ -17,6 +17,7 @@ import {
   updateNotificationPreferences
 } from "../services/api";
 import { clearOfflineQueue, getOfflineQueue } from "../services/offlineQueue";
+import { getAutoPushTokenAsync } from "../services/pushNotifications";
 import { useApp } from "../state/AppContext";
 import { theme } from "../theme";
 
@@ -135,6 +136,34 @@ export default function SettingsScreen({ navigation }) {
     }
   };
 
+  const handleAutoDetectToken = async () => {
+    setPushLoading(true);
+    setError("");
+    setStatus("");
+    try {
+      const auto = await getAutoPushTokenAsync();
+      if (!auto.ok || !auto.token) {
+        setError(auto.error || "Unable to auto-detect push token.");
+        return;
+      }
+
+      setDeviceToken(auto.token);
+      await registerPushDevice({
+        token,
+        deviceToken: auto.token,
+        platform: auto.platform || "unknown"
+      });
+
+      const devicesRes = await listPushDevices({ token });
+      setRegisteredDevices(Array.isArray(devicesRes.items) ? devicesRes.items.length : 0);
+      setStatus("Auto token detected and registered.");
+    } catch (err) {
+      setError("Unable to auto-detect and register token.");
+    } finally {
+      setPushLoading(false);
+    }
+  };
+
   const handleSendTestPush = async () => {
     setPushLoading(true);
     setError("");
@@ -189,6 +218,11 @@ export default function SettingsScreen({ navigation }) {
         <PrimaryButton
           label={pushLoading ? "Working..." : "Register Device Token"}
           onPress={handleRegisterToken}
+          disabled={pushLoading}
+        />
+        <PrimaryButton
+          label={pushLoading ? "Working..." : "Auto Detect Token (Device)"}
+          onPress={handleAutoDetectToken}
           disabled={pushLoading}
         />
         <PrimaryButton

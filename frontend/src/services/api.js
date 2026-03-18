@@ -129,6 +129,15 @@ export function sendSmartNudgePush({ token, childName }) {
   });
 }
 
+export function markNotificationOpened({ token, type, route }) {
+  if (!token) return Promise.resolve(null);
+  return apiRequest("/notifications/opened", {
+    method: "POST",
+    token,
+    body: JSON.stringify({ type, route })
+  }).catch(() => null);
+}
+
 export function scanHomework({ token, imageUrl, instruction }) {
   return apiRequest("/homework/scan", {
     method: "POST",
