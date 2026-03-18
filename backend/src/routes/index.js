@@ -17,6 +17,9 @@ import challenges from "./challenges.js";
 import leaderboards from "./leaderboards.js";
 import parents from "./parents.js";
 import analytics from "./analytics.js";
+import notifications from "./notifications.js";
+import sync from "./sync.js";
+import homework from "./homework.js";
 import { requireAuth } from "../middleware/auth.js";
 
 const router = express.Router();
@@ -41,5 +44,8 @@ router.use("/challenges", challenges);
 router.use("/leaderboards", leaderboards);
 router.use("/parents", parents);
 router.use("/events", analytics);
+router.use("/notifications", notifications);
+router.use("/sync", sync);
+router.use("/homework", homework);
 
 export default router;

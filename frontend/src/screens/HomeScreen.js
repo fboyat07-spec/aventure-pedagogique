@@ -6,7 +6,7 @@ import InlineMessage from "../components/InlineMessage";
 import Card from "../components/Card";
 import ProgressBar from "../components/ProgressBar";
 import Tag from "../components/Tag";
-import { apiRequest, trackEvent } from "../services/api";
+import { apiRequest, fetchNextNudge, trackEvent } from "../services/api";
 import { useApp } from "../state/AppContext";
 import { theme } from "../theme";
 
@@ -14,18 +14,24 @@ export default function HomeScreen({ navigation }) {
   const { token, child, user } = useApp();
   const [count, setCount] = useState(0);
   const [profile, setProfile] = useState({ xp: 0, streak: 0 });
+  const [nudge, setNudge] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
     let mounted = true;
     setLoading(true);
-    Promise.all([apiRequest("/skills", { token }), apiRequest("/gamification/status", { token })])
-      .then(([skillsRes, gamificationRes]) => {
+    Promise.all([
+      apiRequest("/skills", { token }),
+      apiRequest("/gamification/status", { token }),
+      fetchNextNudge({ token })
+    ])
+      .then(([skillsRes, gamificationRes, nudgeRes]) => {
         if (!mounted) return;
         const items = Array.isArray(skillsRes.items) ? skillsRes.items : [];
         setCount(items.length);
         setProfile(gamificationRes.profile || { xp: 0, streak: 0 });
+        setNudge(nudgeRes?.nudge || null);
         setError("");
         trackEvent({
           token,
@@ -69,6 +75,17 @@ export default function HomeScreen({ navigation }) {
         <ProgressBar value={40} />
         <PrimaryButton label="Continue" onPress={() => navigation.navigate("Exercise")} />
       </Card>
+
+      {nudge ? (
+        <Card>
+          <Text style={styles.sectionTitle}>{nudge.title}</Text>
+          <Text style={styles.muted}>{nudge.message}</Text>
+          <PrimaryButton
+            label={nudge.action?.label || "Open"}
+            onPress={() => navigation.navigate(nudge.action?.route || "Progress")}
+          />
+        </Card>
+      ) : null}
 
       <Card>
         <Text style={styles.sectionTitle}>Stats</Text>

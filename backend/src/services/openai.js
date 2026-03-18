@@ -212,3 +212,59 @@ export async function generateExercise({ skillId, difficulty }) {
     return fallbackExercise(skillId, difficulty);
   }
 }
+
+const fallbackHomeworkAnalysis = {
+  summary: "Analyse indisponible pour le moment. Réessaie avec une photo plus nette.",
+  strengths: ["Bonne tentative"],
+  mistakes: ["Vérifier l'énoncé et les unités"],
+  nextSteps: ["Refaire l'exercice étape par étape"],
+  source: "fallback",
+  model: null
+};
+
+export async function scanHomeworkImage({ imageUrl, instruction = "" } = {}) {
+  if (!imageUrl || typeof imageUrl !== "string") {
+    return fallbackHomeworkAnalysis;
+  }
+
+  if (!client) {
+    return fallbackHomeworkAnalysis;
+  }
+
+  try {
+    const { response, model } = await callOpenAIWithFallback((candidateModel) => ({
+      model: candidateModel,
+      input: [
+        {
+          role: "system",
+          content:
+            "Tu es un tuteur pour enfants (6-14). Analyse la photo d'un devoir et retourne UNIQUEMENT un JSON valide avec: summary, strengths[], mistakes[], nextSteps[]. Réponse en français simple."
+        },
+        {
+          role: "user",
+          content: [
+            { type: "input_text", text: instruction || "Analyse cet exercice et explique ce qui est correct et ce qui doit être corrigé." },
+            { type: "input_image", image_url: imageUrl }
+          ]
+        }
+      ],
+      max_output_tokens: 320
+    }));
+
+    const parsed = extractJsonObject(extractTextFromResponse(response));
+    if (!parsed || typeof parsed.summary !== "string") {
+      return fallbackHomeworkAnalysis;
+    }
+
+    return {
+      summary: parsed.summary,
+      strengths: Array.isArray(parsed.strengths) ? parsed.strengths.slice(0, 5) : [],
+      mistakes: Array.isArray(parsed.mistakes) ? parsed.mistakes.slice(0, 5) : [],
+      nextSteps: Array.isArray(parsed.nextSteps) ? parsed.nextSteps.slice(0, 5) : [],
+      source: "openai",
+      model
+    };
+  } catch (err) {
+    return fallbackHomeworkAnalysis;
+  }
+}

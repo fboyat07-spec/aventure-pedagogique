@@ -1,4 +1,5 @@
 import Constants from "expo-constants";
+import { enqueueOfflineEvent } from "./offlineQueue";
 
 const DEFAULT_TIMEOUT_MS = 8000;
 
@@ -71,5 +72,40 @@ export function trackEvent({ token, type, childId, metadata }) {
     method: "POST",
     token,
     body: JSON.stringify({ type, childId, metadata })
-  }).catch(() => null);
+  }).catch(() => {
+    enqueueOfflineEvent({ type, childId, metadata });
+    return null;
+  });
+}
+
+export function syncOfflinePayload({ token, payload }) {
+  return apiRequest("/sync/upload", {
+    method: "POST",
+    token,
+    body: JSON.stringify(payload || {})
+  });
+}
+
+export function fetchNextNudge({ token }) {
+  return apiRequest("/notifications/next-nudge", { token });
+}
+
+export function fetchNotificationPreferences({ token }) {
+  return apiRequest("/notifications/preferences", { token });
+}
+
+export function updateNotificationPreferences({ token, updates }) {
+  return apiRequest("/notifications/preferences", {
+    method: "PATCH",
+    token,
+    body: JSON.stringify(updates || {})
+  });
+}
+
+export function scanHomework({ token, imageUrl, instruction }) {
+  return apiRequest("/homework/scan", {
+    method: "POST",
+    token,
+    body: JSON.stringify({ imageUrl, instruction })
+  });
 }

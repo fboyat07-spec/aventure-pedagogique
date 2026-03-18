@@ -25,6 +25,11 @@ export function recordEvent(userId, event = {}) {
   return item;
 }
 
+export function ingestEvents(userId, events = []) {
+  if (!Array.isArray(events)) return [];
+  return events.map((event) => recordEvent(userId, event));
+}
+
 export function listEvents(userId, days = 7) {
   const bucket = ensureUserBucket(userId);
   const from = Date.now() - Math.max(1, Number(days || 7)) * 24 * 60 * 60 * 1000;

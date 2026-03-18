@@ -18,6 +18,7 @@ import StreakScreen from "../screens/StreakScreen";
 import LeaderboardsScreen from "../screens/LeaderboardsScreen";
 import FriendsChallengesScreen from "../screens/FriendsChallengesScreen";
 import ParentDashboardScreen from "../screens/ParentDashboardScreen";
+import HomeworkScannerScreen from "../screens/HomeworkScannerScreen";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -49,6 +50,7 @@ export default function AppNavigator() {
       <Stack.Screen name="Leaderboards" component={LeaderboardsScreen} />
       <Stack.Screen name="FriendsChallenges" component={FriendsChallengesScreen} />
       <Stack.Screen name="ParentDashboard" component={ParentDashboardScreen} />
+      <Stack.Screen name="HomeworkScanner" component={HomeworkScannerScreen} />
     </Stack.Navigator>
   );
 }
