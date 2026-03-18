@@ -9,5 +9,8 @@ dist
 build
 *.log
 .DS_Store
+backend/.env.render
+backend/.env.render.template
+Render_Test_Report.html
 env.cloudrun.yaml
 *openAI*.rtf
