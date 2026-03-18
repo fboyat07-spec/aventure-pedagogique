@@ -5,7 +5,7 @@ import PrimaryButton from "../components/PrimaryButton";
 import Card from "../components/Card";
 import InlineMessage from "../components/InlineMessage";
 import ProgressBar from "../components/ProgressBar";
-import { apiRequest } from "../services/api";
+import { apiRequest, trackEvent } from "../services/api";
 import { useApp } from "../state/AppContext";
 import { theme } from "../theme";
 
@@ -69,6 +69,11 @@ export default function DiagnosticScreen({ navigation }) {
           method: "POST",
           token,
           body: JSON.stringify({ sessionId })
+        });
+        trackEvent({
+          token,
+          type: "diagnostic_completed",
+          metadata: { placement: finish.placement, skillId: finish.recommendedSkill }
         });
         setResult(finish);
         setQuestion(null);

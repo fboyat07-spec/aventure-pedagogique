@@ -4,7 +4,7 @@ import ScreenLayout from "../components/ScreenLayout";
 import PrimaryButton from "../components/PrimaryButton";
 import Card from "../components/Card";
 import InlineMessage from "../components/InlineMessage";
-import { apiRequest } from "../services/api";
+import { apiRequest, trackEvent } from "../services/api";
 import { useApp } from "../state/AppContext";
 import { theme } from "../theme";
 
@@ -45,6 +45,11 @@ export default function MissionsScreen({ navigation }) {
         method: "POST",
         token,
         body: JSON.stringify({ xp: quest.rewardXp || 20, reason: "quest_complete" })
+      });
+      trackEvent({
+        token,
+        type: "quest_completed",
+        metadata: { world: quest.world, rewardXp: quest.rewardXp || 20 }
       });
       setStatusMessage("Quest completed. Reward added.");
     } catch (err) {

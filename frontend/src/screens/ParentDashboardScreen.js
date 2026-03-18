@@ -42,6 +42,9 @@ export default function ParentDashboardScreen() {
         <Text>This week: {report?.sessions ?? 0} sessions, {report?.weeklyMinutes ?? 0} min</Text>
         <Text>Math: {report?.mathProgress ?? 0}%</Text>
         <Text>Reading: {report?.readingProgress ?? 0}%</Text>
+        <Text>Quiz success: {report?.quizSuccessRate ?? 0}%</Text>
+        <Text>Streak: {report?.streakDays ?? 0} days</Text>
+        <Text>Drop risk: {report?.dropRisk ?? "low"}</Text>
       </Card>
       <Card>
         <Text>Top recommendations:</Text>

@@ -2,6 +2,7 @@ import express from "express";
 import { ok } from "../utils/respond.js";
 import { knowledgeGraph } from "../ai/knowledgeGraph.js";
 import { detectGap } from "../ai/gapDetector.js";
+import { summarizeEvents } from "../services/analyticsStore.js";
 
 const router = express.Router();
 
@@ -43,6 +44,7 @@ function domainAverage(mastery, domain) {
 
 router.get("/summary", (req, res) => {
   const mastery = masteryFromRequest(req);
+  const analytics = summarizeEvents(req.user.id, Number(req.query.days || 7));
   const weakSkills = Object.entries(mastery)
     .sort((a, b) => Number(a[1]) - Number(b[1]))
     .slice(0, 3)
@@ -55,8 +57,11 @@ router.get("/summary", (req, res) => {
       mathProgress: domainAverage(mastery, "math"),
       readingProgress: domainAverage(mastery, "reading"),
       weakSkills,
-      weeklyMinutes: 52,
-      sessions: 4
+      weeklyMinutes: analytics.avgSessionMinutes * Math.max(analytics.sessions, 1),
+      sessions: analytics.sessions,
+      streakDays: analytics.streakDays,
+      quizSuccessRate: analytics.quizSuccessRate,
+      dropRisk: analytics.dropRisk
     }
   });
 });

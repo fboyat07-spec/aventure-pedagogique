@@ -6,25 +6,33 @@ import InlineMessage from "../components/InlineMessage";
 import Card from "../components/Card";
 import ProgressBar from "../components/ProgressBar";
 import Tag from "../components/Tag";
-import { apiRequest } from "../services/api";
+import { apiRequest, trackEvent } from "../services/api";
 import { useApp } from "../state/AppContext";
 import { theme } from "../theme";
 
 export default function HomeScreen({ navigation }) {
   const { token, child, user } = useApp();
   const [count, setCount] = useState(0);
+  const [profile, setProfile] = useState({ xp: 0, streak: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
     let mounted = true;
     setLoading(true);
-    apiRequest("/skills", { token })
-      .then((res) => {
+    Promise.all([apiRequest("/skills", { token }), apiRequest("/gamification/status", { token })])
+      .then(([skillsRes, gamificationRes]) => {
         if (!mounted) return;
-        const items = Array.isArray(res.items) ? res.items : [];
+        const items = Array.isArray(skillsRes.items) ? skillsRes.items : [];
         setCount(items.length);
+        setProfile(gamificationRes.profile || { xp: 0, streak: 0 });
         setError("");
+        trackEvent({
+          token,
+          childId: child?.id,
+          type: "session_start",
+          metadata: { skillsLoaded: items.length }
+        });
       })
       .catch(() => {
         if (!mounted) return;
@@ -37,7 +45,7 @@ export default function HomeScreen({ navigation }) {
     return () => {
       mounted = false;
     };
-  }, [token]);
+  }, [token, child?.id]);
 
   return (
     <ScreenLayout title="Home" subtitle="Daily mission and quick stats.">
@@ -65,8 +73,8 @@ export default function HomeScreen({ navigation }) {
       <Card>
         <Text style={styles.sectionTitle}>Stats</Text>
         <View style={styles.rowBetween}>
-          <Text style={styles.stat}>Streak: 5 days</Text>
-          <Text style={styles.stat}>XP: 1200</Text>
+          <Text style={styles.stat}>Streak: {profile?.streak || 0} days</Text>
+          <Text style={styles.stat}>XP: {profile?.xp || 0}</Text>
         </View>
         <Text style={styles.muted}>{loading ? "Loading skills..." : `Skills loaded: ${count}`}</Text>
       </Card>

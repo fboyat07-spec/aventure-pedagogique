@@ -64,3 +64,12 @@ export async function apiRequest(path, options = {}) {
     clearTimeout(timeout);
   }
 }
+
+export function trackEvent({ token, type, childId, metadata }) {
+  if (!type) return Promise.resolve(null);
+  return apiRequest("/events", {
+    method: "POST",
+    token,
+    body: JSON.stringify({ type, childId, metadata })
+  }).catch(() => null);
+}

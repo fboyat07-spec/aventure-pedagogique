@@ -5,7 +5,7 @@ import PrimaryButton from "../components/PrimaryButton";
 import Card from "../components/Card";
 import InlineMessage from "../components/InlineMessage";
 import { theme } from "../theme";
-import { apiRequest } from "../services/api";
+import { apiRequest, trackEvent } from "../services/api";
 import { useApp } from "../state/AppContext";
 
 export default function ExerciseScreen() {
@@ -15,7 +15,7 @@ export default function ExerciseScreen() {
   const [exercise, setExercise] = useState(null);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const { token } = useApp();
+  const { token, child } = useApp();
 
   useEffect(() => {
     let mounted = true;
@@ -31,6 +31,12 @@ export default function ExerciseScreen() {
         setAnswer("");
         setFeedback("");
         setFeedbackType("info");
+        trackEvent({
+          token,
+          childId: child?.id,
+          type: "lesson_started",
+          metadata: { skillId: item?.skillId || "math.addition.1" }
+        });
       })
       .catch(() => {
         if (!mounted) return;
@@ -39,7 +45,7 @@ export default function ExerciseScreen() {
     return () => {
       mounted = false;
     };
-  }, [token]);
+  }, [token, child?.id]);
 
   const handleSubmit = async () => {
     if (!exercise?.id) return;
@@ -60,6 +66,12 @@ export default function ExerciseScreen() {
       if (result.isCorrect) {
         setFeedbackType("info");
         setFeedback("Great job! Correct answer.");
+        trackEvent({
+          token,
+          childId: child?.id,
+          type: "lesson_completed",
+          metadata: { skillId: exercise.skillId, xp: result.xpAwarded || 0 }
+        });
       } else {
         setFeedbackType("error");
         setFeedback(
@@ -68,6 +80,12 @@ export default function ExerciseScreen() {
             : "Good try. Check your answer and try again."
         );
       }
+      trackEvent({
+        token,
+        childId: child?.id,
+        type: "exercise_submitted",
+        metadata: { skillId: exercise.skillId, isCorrect: Boolean(result.isCorrect) }
+      });
     } catch (err) {
       setFeedbackType("error");
       setFeedback("Unable to submit answer right now.");
