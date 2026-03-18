@@ -20,6 +20,7 @@ import analytics from "./analytics.js";
 import notifications from "./notifications.js";
 import sync from "./sync.js";
 import homework from "./homework.js";
+import ops from "./ops.js";
 import { requireAuth } from "../middleware/auth.js";
 
 const router = express.Router();
@@ -47,5 +48,6 @@ router.use("/events", analytics);
 router.use("/notifications", notifications);
 router.use("/sync", sync);
 router.use("/homework", homework);
+router.use("/ops", ops);
 
 export default router;

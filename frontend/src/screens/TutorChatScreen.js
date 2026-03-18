@@ -5,7 +5,7 @@ import PrimaryButton from "../components/PrimaryButton";
 import Card from "../components/Card";
 import InlineMessage from "../components/InlineMessage";
 import { theme } from "../theme";
-import { apiRequest, trackEvent } from "../services/api";
+import { apiRequest, reportClientError, trackEvent } from "../services/api";
 import { useApp } from "../state/AppContext";
 
 export default function TutorChatScreen() {
@@ -118,6 +118,12 @@ export default function TutorChatScreen() {
       });
     } catch (err) {
       setError("Tutor is unavailable right now.");
+      reportClientError({
+        token,
+        message: "tutor_chat_failed",
+        stack: String(err?.message || ""),
+        context: { path: "TutorChatScreen" }
+      });
     } finally {
       setLoading(false);
     }

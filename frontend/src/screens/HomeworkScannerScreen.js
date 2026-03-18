@@ -4,7 +4,7 @@ import ScreenLayout from "../components/ScreenLayout";
 import Card from "../components/Card";
 import PrimaryButton from "../components/PrimaryButton";
 import InlineMessage from "../components/InlineMessage";
-import { scanHomework, trackEvent } from "../services/api";
+import { reportClientError, scanHomework, trackEvent } from "../services/api";
 import { useApp } from "../state/AppContext";
 import { theme } from "../theme";
 
@@ -31,6 +31,12 @@ export default function HomeworkScannerScreen() {
       });
     } catch (err) {
       setError("Unable to analyze this image right now.");
+      reportClientError({
+        token,
+        message: "homework_scan_failed",
+        stack: String(err?.message || ""),
+        context: { path: "HomeworkScannerScreen" }
+      });
     } finally {
       setLoading(false);
     }

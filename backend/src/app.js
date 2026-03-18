@@ -3,11 +3,13 @@ import cors from "cors";
 import routes from "./routes/index.js";
 import { notFound, errorHandler } from "./middleware/errorHandler.js";
 import { attachRequestId, requestLogger } from "./middleware/requestId.js";
+import { securityHeaders } from "./middleware/security.js";
 
 const app = express();
 
 app.use(attachRequestId);
 app.use(requestLogger);
+app.use(securityHeaders);
 app.use(cors({ origin: true }));
 app.use(express.json({ limit: "1mb" }));
 

@@ -2,8 +2,10 @@ import express from "express";
 import crypto from "node:crypto";
 import { ok } from "../utils/respond.js";
 import { generateExercise } from "../services/openai.js";
+import { createRateLimiter } from "../middleware/security.js";
 
 const router = express.Router();
+router.use(createRateLimiter({ windowMs: 60 * 1000, max: 80 }));
 const pendingExercises = new Map();
 const EXERCISE_TTL_MS = 30 * 60 * 1000;
 

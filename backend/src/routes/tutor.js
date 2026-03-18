@@ -1,8 +1,10 @@
 import express from "express";
 import { ok } from "../utils/respond.js";
 import { generateTutorReply, isOpenAIReady } from "../services/openai.js";
+import { createRateLimiter } from "../middleware/security.js";
 
 const router = express.Router();
+router.use(createRateLimiter({ windowMs: 60 * 1000, max: 40 }));
 
 router.post("/chat", async (req, res) => {
   const { message } = req.body || {};

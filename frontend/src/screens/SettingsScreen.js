@@ -5,7 +5,9 @@ import Card from "../components/Card";
 import PrimaryButton from "../components/PrimaryButton";
 import InlineMessage from "../components/InlineMessage";
 import {
+  fetchOpsStatus,
   fetchNotificationPreferences,
+  reportClientError,
   syncOfflinePayload,
   trackEvent,
   updateNotificationPreferences
@@ -19,15 +21,17 @@ export default function SettingsScreen({ navigation }) {
   const [enabled, setEnabled] = useState(true);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [ops, setOps] = useState(null);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
     let mounted = true;
-    fetchNotificationPreferences({ token })
-      .then((res) => {
+    Promise.all([fetchNotificationPreferences({ token }), fetchOpsStatus({ token })])
+      .then(([prefsRes, opsRes]) => {
         if (!mounted) return;
-        setEnabled(Boolean(res.preferences?.enabled));
+        setEnabled(Boolean(prefsRes.preferences?.enabled));
+        setOps(opsRes || null);
       })
       .catch(() => {
         if (!mounted) return;
@@ -84,6 +88,12 @@ export default function SettingsScreen({ navigation }) {
       setStatus(`Offline sync complete: ${res.synced?.events || 0} events uploaded.`);
     } catch (err) {
       setError("Offline sync failed. Try again later.");
+      reportClientError({
+        token,
+        message: "offline_sync_failed",
+        stack: String(err?.message || ""),
+        context: { path: "SettingsScreen", queueSize: getOfflineQueue().length }
+      });
     } finally {
       setSyncing(false);
     }
@@ -100,6 +110,15 @@ export default function SettingsScreen({ navigation }) {
           <Switch value={enabled} onValueChange={handleToggleNotifications} disabled={loading} />
         </View>
         <Text style={styles.muted}>Adaptive reminders based on activity and progress.</Text>
+      </Card>
+
+      <Card>
+        <Text style={styles.label}>System Status</Text>
+        <Text style={styles.muted}>
+          OpenAI: {ops?.services?.openai ? "ready" : "offline"} | Firebase:{" "}
+          {ops?.services?.firebase ? "ready" : "offline"}
+        </Text>
+        <Text style={styles.muted}>Version: {ops?.version || "dev"}</Text>
       </Card>
 
       <Card>

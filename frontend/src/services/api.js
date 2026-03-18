@@ -109,3 +109,19 @@ export function scanHomework({ token, imageUrl, instruction }) {
     body: JSON.stringify({ imageUrl, instruction })
   });
 }
+
+export function fetchOpsStatus({ token }) {
+  return apiRequest("/ops/status", { token });
+}
+
+export function fetchOpsMetrics({ token, minutes = 60 }) {
+  return apiRequest(`/ops/metrics?minutes=${minutes}`, { token });
+}
+
+export function reportClientError({ token, message, stack, context }) {
+  return apiRequest("/ops/client-error", {
+    method: "POST",
+    token,
+    body: JSON.stringify({ message, stack, context })
+  }).catch(() => null);
+}

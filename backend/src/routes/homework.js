@@ -1,8 +1,10 @@
 import express from "express";
 import { ok } from "../utils/respond.js";
 import { scanHomeworkImage } from "../services/openai.js";
+import { createRateLimiter } from "../middleware/security.js";
 
 const router = express.Router();
+router.use(createRateLimiter({ windowMs: 60 * 1000, max: 20 }));
 
 router.post("/scan", async (req, res) => {
   const { imageUrl, instruction } = req.body || {};
